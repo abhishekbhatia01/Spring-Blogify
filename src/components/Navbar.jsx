@@ -5,7 +5,7 @@ import LogoutButton from "./LogoutButton";
 
 const Navbar = () => {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
   const navLinks = [
     { name: "Home", path: "/" },
     { name: "Blogs", path: "/blogs" },
@@ -19,11 +19,7 @@ const Navbar = () => {
     <nav className="sticky top-0 left-0 bg-indigo-500 w-full flex items-center justify-between px-4 md:px-16 lg:px-24 xl:px-32 py-4 md:py-6 z-50 shadow-md">
       {/* Logo */}
       <a href="/" className="flex items-center gap-2">
-        <img
-          src="https://prebuiltui.com/logo.svg?p=white&s=white&t=white"
-          alt="logo"
-          className="h-9"
-        />
+        <h1 className="font-semibold text-4xl text-white logo">Blogify</h1>
       </a>
 
       {/* Desktop Nav */}
@@ -44,13 +40,17 @@ const Navbar = () => {
       <div className="hidden md:flex items-center gap-4">
         {isAuthenticated ? (
           <>
-            <div className="relative">
+            <div className="relative" onClick={() => navigate("/profile")}>
               <img
                 className="h-10 w-10 rounded-full object-cover"
-                src="https://images.unsplash.com/photo-1639628735078-ed2f038a193e?q=80&w=1074&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+                src={
+                  user.profileImage
+                    ? user.profileImage
+                    : "https://imgs.search.brave.com/nVY-jJFjRjOlbUQyADij2hQvQkv0INDwhVuG_ZdP-OU/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9pbWcu/ZnJlZXBpay5jb20v/cHJlbWl1bS1waG90/by9mdW5ueS1jYXJ0/b29uLW1hbi13aXRo/LXJlZC1iZWFyZC1t/dXN0YWNoZS12ZWN0/b3ItaWxsdXN0cmF0/aW9uXzk5NDQxOC0x/MDE1MzcuanBnP3Nl/bXQ9YWlzX2luY29t/aW5nJnc9NzQwJnE9/ODA"
+                }
                 alt="userImage1"
               />
-              <div className="absolute bottom-2 right-0 h-3.5 w-3.5 rounded-full bg-green-500"></div>
+              <div className="absolute -bottom-0.5 right-0 h-3.5 w-3.5 rounded-full bg-green-500"></div>
             </div>
             <LogoutButton />
           </>
@@ -110,13 +110,16 @@ const Navbar = () => {
 
         {isAuthenticated ? (
           <>
-            <div className="relative">
+            <div className="relative" onClick={() => navigate("/profile")}>
               <img
                 className="h-10 w-10 rounded-full object-cover"
-                src="https://images.unsplash.com/photo-1639628735078-ed2f038a193e?q=80&w=1074&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-                alt="userImage1"
+                src={
+                  user.profileImage
+                    ? user.profileImage
+                    : "https://imgs.search.brave.com/nVY-jJFjRjOlbUQyADij2hQvQkv0INDwhVuG_ZdP-OU/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9pbWcu/ZnJlZXBpay5jb20v/cHJlbWl1bS1waG90/by9mdW5ueS1jYXJ0/b29uLW1hbi13aXRo/LXJlZC1iZWFyZC1t/dXN0YWNoZS12ZWN0/b3ItaWxsdXN0cmF0/aW9uXzk5NDQxOC0x/MDE1MzcuanBnP3Nl/bXQ9YWlzX2luY29t/aW5nJnc9NzQwJnE9/ODA"
+                }
               />
-              <div className="absolute bottom-2 right-0 h-3.5 w-3.5 rounded-full bg-green-500"></div>
+              <div className="absolute -bottom-0.5 right-0 h-3.5 w-3.5 rounded-full bg-green-500"></div>
             </div>
             <LogoutButton />
           </>

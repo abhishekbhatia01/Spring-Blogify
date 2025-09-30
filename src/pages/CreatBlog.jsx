@@ -1,22 +1,61 @@
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import React, { useState } from "react";
+import toast from "react-hot-toast";
+import api from "../config/api";
+import { useAuthStore } from "../store/userAuthStore";
+
+const createBlog = async (newBlog) => {
+  const formData = new FormData();
+  formData.append("userId", newBlog.id);
+  formData.append("title", newBlog.title);
+  formData.append("content", newBlog.content);
+  if (newBlog.imageToUpload) {
+    formData.append("image", newBlog.imageToUpload);
+  }
+
+  const { data } = await api.post("/posts", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data;
+};
 
 const CreateBlog = () => {
+  const { id } = useAuthStore((state) => state.user);
   const [image, setImage] = useState(null);
+  const [imageToUpload, setImageToUpload] = useState(null);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      setImage(URL.createObjectURL(file)); // preview image
+      setImageToUpload(file);
+      setImage(URL.createObjectURL(file)); // To preview image we convert it into a url
     }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // TODO: handle form submission with axios/FormData
-    console.log({ title, content, image });
+    mutation.mutate({ id, title, content, imageToUpload });
   };
+
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: createBlog,
+    onSuccess: () => {
+      queryClient.invalidateQueries(["blogs"]);
+      toast.success("🎉 Blog created successfully!");
+
+      setTitle("");
+      setContent("");
+      setImage(null);
+      setImageToUpload(null);
+    },
+    onError: () => {
+      toast.error("❌ Failed to create blog. Try again!");
+    },
+  });
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-10 bg-[url('https://images.unsplash.com/photo-1542435503-956c469947f6?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')]">
@@ -70,9 +109,14 @@ const CreateBlog = () => {
 
             <button
               type="submit"
-              className="w-full bg-sky-600 text-white py-3 rounded-lg hover:bg-sky-700 transition"
+              disabled={mutation.isPending}
+              className={`w-full py-3 rounded-lg transition ${
+                mutation.isPending
+                  ? "bg-sky-300 text-gray-100 cursor-not-allowed"
+                  : "bg-sky-600 text-white hover:bg-sky-700"
+              }`}
             >
-              Publish Blog
+              {mutation.isPending ? "Publishing..." : "Publish Blog"}
             </button>
           </form>
         </div>
