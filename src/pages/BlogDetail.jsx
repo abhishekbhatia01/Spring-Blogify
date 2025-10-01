@@ -1,62 +1,197 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Heart } from "lucide-react"; // using lucide icons
+import { AwardIcon, Heart } from "lucide-react"; // using lucide icons
+import { useNavigate, useParams } from "react-router-dom";
+import api from "../config/api";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
+import { useAuthStore } from "../store/userAuthStore";
+import NotFound404 from "./NotFound404";
+
+const postComment = async (requiredDetails) => {
+  try {
+    const { data } = await api.post(
+      `/posts/${requiredDetails.postId}/comments?userId=${requiredDetails.id}`,
+      { content: requiredDetails.newComment }
+    );
+    console.log(data);
+    return data;
+  } catch (error) {
+    console.log(error);
+  }
+};
 
 const BlogDetail = () => {
-  const [blog, setBlog] = useState({
-    title: "Perplexity x Theo Von’s This Past Weekend",
-    content: `
-Curiosity has a new co-host.
+  const navigate = useNavigate();
+  const { isAuthenticated, user } = useAuthStore();
+  const id = user?.id;
+  const [page, setPage] = useState(0);
 
-Today we’re announcing a new partnership with The Roost Podcast Network and Theo Von’s hit show, “This Past Weekend.” Our partnership pairs one of the world’s most famously inquisitive minds with the AI-powered answer engine built for people who are curious.
+  const { postId } = useParams();
 
-If you’ve ever listened to Theo Von, you’re familiar with the moments of spontaneity and curiosity that make him a joy to listen to. Those impulsive, unscripted detours, when suddenly a question comes to mind and Theo asks “Can we look that up?” Those moments resonate because all of us are curious.
+  const [newComment, setNewComment] = useState("");
 
-Starting today, Perplexity will power these “look it up” moments to deliver accurate and trustworthy answers on-screen for Theo, his guests, and his fans.
-
-This isn’t a typical ad spot or podcast sponsor shoutout. Perplexity’s presence is baked in. Perplexity is integrated directly into the flow of the conversation, because curiosity is a natural part of all conversation.
-
-Theo’s curiosity is never staged or scripted, so our answers are always organic. No more Theo or team digging through endless blue links. No more results, just instant, accurate answers.
-    `,
-    imgUrl:
-      "https://framerusercontent.com/images/w2fbgpK5XbA8dcXjol9h7rNB4Lo.png?width=1920&height=1080",
-    createdAt: "2025-09-08",
-    user: { name: "Perplexity Team" },
-    likes: 12,
-  });
-
-  const [liked, setLiked] = useState(false);
-  const [likesCount, setLikesCount] = useState(blog.likes);
-
-  const handleLike = () => {
-    if (liked) {
-      setLikesCount(likesCount - 1);
-    } else {
-      setLikesCount(likesCount + 1);
+  const fetchBlog = async (postId) => {
+    try {
+      const res = await api.get(`/posts/${postId}`);
+      return res;
+    } catch (error) {
+      // If unauthorized, return a fallback blog object instead of undefined
+      if (error?.response?.status === 401) {
+        return {
+          data: {
+            title: "Unauthorized",
+            content: "You must be logged in to view this blog.",
+            name: "",
+            createdAt: Date.now(),
+            imgUrl: "",
+          },
+        };
+      }
+      console.log(error);
+      return {
+        data: {
+          title: "Not Found",
+          content: "Blog not found.",
+          name: "",
+          createdAt: Date.now(),
+          imgUrl: "",
+        },
+      };
     }
-    setLiked(!liked);
-
-    // 🔗 Backend integration:
-    // axios.post(`/api/posts/${blogId}/like`, { userId })
   };
 
-  const [comments, setComments] = useState([
-    { id: 1, author: "Jane Doe", text: "This is so well written 👏" },
-    { id: 2, author: "John Smith", text: "Loved the clarity and tone." },
-  ]);
-  const [newComment, setNewComment] = useState("");
+  const fetchComments = async (postId, page, size = 2) => {
+    try {
+      const { data } = await api.get(
+        `/posts/${postId}/comments?page=${page}&size=${size}`
+      );
+      return data;
+    } catch (error) {
+      if (error?.response?.status === 401) {
+        return { content: [], first: true, last: true, totalPages: 1 };
+      }
+      console.log(error);
+      return { content: [], first: true, last: true, totalPages: 1 };
+    }
+  };
+
+  const fetchLikes = async (postId, userId) => {
+    const params = {};
+    if (userId) params.userId = userId;
+    const { data } = await api.get(`/posts/${postId}/like`, { params });
+    return data;
+  };
+
+  const {
+    data: blogData,
+    isLoading: isBlogLoading,
+    refetch: blogRefetch,
+  } = useQuery({
+    queryKey: ["blog", postId],
+    queryFn: () => fetchBlog(postId),
+  });
+
+  useEffect(() => {
+    if (postId && blogRefetch) {
+      blogRefetch();
+    }
+  }, [postId, blogRefetch]);
+
+  const {
+    data: allComments,
+    isError: isCommentError,
+    error: commentError,
+    refetch: commentRefetch,
+    isLoading: isCommentLoading,
+  } = useQuery({
+    queryKey: ["comment", postId, page],
+    queryFn: () => fetchComments(postId, page),
+  });
+
+  const { data: likesData, refetch: likeRefetch } = useQuery({
+    queryKey: ["likes", postId],
+    queryFn: () => fetchLikes(postId, id),
+  });
+
+  const [isLiked, setIsLiked] = useState(false);
+
+  const handleLikeToggle = () => {
+    if (!id) navigate("/login");
+    if (isLiked) {
+      dislikeMutation.mutate();
+    } else {
+      likeMutation.mutate();
+    }
+  };
+
+  const queryClient = useQueryClient();
+
+  const likeMutation = useMutation({
+    mutationFn: async () => {
+      await api.post(`/posts/${postId}/like`, null, { params: { userId: id } });
+    },
+    onSuccess: () => {
+      likeRefetch();
+    },
+  });
+
+  const dislikeMutation = useMutation({
+    mutationFn: async () => {
+      await api.delete(`/posts/${postId}/like`, { params: { userId: id } });
+    },
+    onSuccess: () => {
+      likeRefetch();
+    },
+  });
+
+  const mutation = useMutation({
+    mutationFn: postComment,
+    onSuccess: () => {
+      queryClient.invalidateQueries(["comment"]);
+      toast.success("💬 Comment created successfully!");
+      setNewComment("");
+      commentRefetch();
+    },
+    onError: () => {
+      toast.error("❌ Something went wrong. Try again!");
+    },
+  });
+
+  useEffect(() => {
+    if (likesData) {
+      setIsLiked(!!likesData.likedByUser);
+    }
+  }, [likesData, postId]);
+
+  if (isBlogLoading) {
+    return <div className="p-5">Loading...</div>;
+  }
+  if (
+    blogData?.data?.title === "Not Found" ||
+    blogData?.data?.title === "Unauthorized" ||
+    !blogData?.data?.title
+  ) {
+    return <NotFound404 />;
+  }
+
+  if (isCommentLoading) {
+    return <div className="p-5">Loading...</div>;
+  }
+
+  if (isCommentError) {
+    return (
+      <div className="p-5 text-red-500">
+        Error: {commentError?.message || "Failed to load comments."}
+      </div>
+    );
+  }
 
   const handleCommentSubmit = (e) => {
     e.preventDefault();
     if (!newComment.trim()) return;
-    setComments([
-      ...comments,
-      { id: Date.now(), author: "You", text: newComment },
-    ]);
+    mutation.mutate({ postId, id, newComment });
     setNewComment("");
-
-    // 🔗 Backend integration:
-    // axios.post(`/api/posts/${blogId}/comments`, { userId, text: newComment })
   };
 
   return (
@@ -64,8 +199,12 @@ Theo’s curiosity is never staged or scripted, so our answers are always organi
       {/* Hero Section */}
       <div className="w-full">
         <img
-          src={blog.imgUrl}
-          alt={blog.title}
+          src={
+            blogData?.data?.imgUrl
+              ? blogData.data.imgUrl
+              : "https://plus.unsplash.com/premium_photo-1683121696175-d05600fefb85?q=80&w=1632&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+          }
+          alt={blogData?.data?.title || "Blog Image"}
           className="w-full h-72 md:h-96 object-cover"
         />
       </div>
@@ -74,9 +213,11 @@ Theo’s curiosity is never staged or scripted, so our answers are always organi
         {/* Author + Date */}
         <div className="flex flex-wrap items-center justify-between text-sm text-gray-600 mb-6">
           <span>
-            Written by <strong>{blog.user.name}</strong>
+            Written by <strong>{blogData?.data?.name || "Unknown"}</strong>
           </span>
-          <span>{new Date(blog.createdAt).toDateString()}</span>
+          <span>
+            {new Date(blogData?.data?.createdAt || Date.now()).toDateString()}
+          </span>
         </div>
 
         {/* Title */}
@@ -86,11 +227,11 @@ Theo’s curiosity is never staged or scripted, so our answers are always organi
           transition={{ duration: 0.6 }}
           className="text-3xl md:text-4xl font-bold mb-6 leading-snug"
         >
-          {blog.title}
+          {blogData?.data?.title || "Untitled"}
         </motion.h1>
 
         {/* Content */}
-        {blog.content.split("\n").map((para, idx) => (
+        {(blogData?.data?.content || "").split("\n").map((para, idx) => (
           <motion.p
             key={idx}
             initial={{ opacity: 0, y: 10 }}
@@ -103,19 +244,22 @@ Theo’s curiosity is never staged or scripted, so our answers are always organi
         ))}
 
         {/* Like Button */}
-        <div className="flex items-center gap-3 mt-6">
+        <div
+          className="flex items-center gap-3 mt-6"
+          onClick={handleLikeToggle}
+        >
           <motion.button
-            onClick={handleLike}
             whileTap={{ scale: 0.8 }}
             className="flex items-center gap-2"
           >
             <Heart
               className={`w-6 h-6 cursor-pointer transition-colors ${
-                liked ? "fill-red-500 text-red-500" : "text-gray-500"
+                isLiked ? "fill-red-500 text-red-500" : "text-gray-500"
               }`}
             />
             <span className="text-gray-700">
-              {likesCount} {likesCount === 1 ? "Like" : "Likes"}
+              {likesData?.likeCount || 0}{" "}
+              {likesData?.likesCount === 1 ? "Like" : "Likes"}
             </span>
           </motion.button>
         </div>
@@ -124,30 +268,99 @@ Theo’s curiosity is never staged or scripted, so our answers are always organi
         <div className="mt-12">
           <h2 className="text-xl font-semibold mb-4">Comments</h2>
           <div className="space-y-4">
-            {comments.map((c) => (
+            {allComments?.content.map((c) => (
               <div key={c.id} className="border-b pb-3">
-                <p className="text-sm font-semibold">{c.author}</p>
-                <p className="text-gray-600">{c.text}</p>
+                <p className="text-sm font-semibold">{c.userName}</p>
+                <p className="text-gray-600">{c.content}</p>
               </div>
             ))}
           </div>
+          <center>
+            <div className="flex items-center justify-between w-full max-w-80 text-gray-500 font-medium my-4">
+              <button
+                type="button"
+                disabled={allComments.first}
+                onClick={() => setPage(page - 1)}
+                aria-label="prev"
+                className="rounded-full border border-slate-200 hover:bg-slate-100/70 active:scale-95 transition-all disabled:cursor-not-allowed"
+              >
+                <svg
+                  width="40"
+                  height="40"
+                  viewBox="0 0 40 40"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M22.499 12.85a.9.9 0 0 1 .57.205l.067.06a.9.9 0 0 1 .06 1.206l-.06.066-5.585 5.586-.028.027.028.027 5.585 5.587a.9.9 0 0 1 .06 1.207l-.06.066a.9.9 0 0 1-1.207.06l-.066-.06-6.25-6.25a1 1 0 0 1-.158-.212l-.038-.08a.9.9 0 0 1-.03-.606l.03-.083a1 1 0 0 1 .137-.226l.06-.066 6.25-6.25a.9.9 0 0 1 .635-.263Z"
+                    fill="#475569"
+                    stroke="#475569"
+                    strokeWidth=".078"
+                  />
+                </svg>
+              </button>
+
+              <span>
+                {page + 1} of {allComments?.totalPages}
+              </span>
+
+              <button
+                type="button"
+                disabled={allComments.last}
+                onClick={() => setPage(page + 1)}
+                aria-label="next"
+                className="rounded-full border border-slate-200 hover:bg-slate-100/70 active:scale-95 transition-all disabled:cursor-not-allowed"
+              >
+                <svg
+                  className="rotate-180"
+                  width="40"
+                  height="40"
+                  viewBox="0 0 40 40"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M22.499 12.85a.9.9 0 0 1 .57.205l.067.06a.9.9 0 0 1 .06 1.206l-.06.066-5.585 5.586-.028.027.028.027 5.585 5.587a.9.9 0 0 1 .06 1.207l-.06.066a.9.9 0 0 1-1.207.06l-.066-.06-6.25-6.25a1 1 0 0 1-.158-.212l-.038-.08a.9.9 0 0 1-.03-.606l.03-.083a1 1 0 0 1 .137-.226l.06-.066 6.25-6.25a.9.9 0 0 1 .635-.263Z"
+                    fill="#475569"
+                    stroke="#475569"
+                    strokeWidth=".078"
+                  />
+                </svg>
+              </button>
+            </div>
+          </center>
 
           {/* Add Comment */}
-          <form onSubmit={handleCommentSubmit} className="mt-6">
-            <textarea
-              rows="3"
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              placeholder="Write a comment..."
-              className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-sky-500 outline-none resize-none"
-            />
-            <button
-              type="submit"
-              className="mt-3 bg-sky-600 text-white px-5 py-2 rounded-lg hover:bg-sky-700 transition"
-            >
-              Post Comment
-            </button>
-          </form>
+          {isAuthenticated ? (
+            <form onSubmit={handleCommentSubmit} className="mt-6">
+              <textarea
+                rows="3"
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder="Write a comment..."
+                className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-sky-500 outline-none resize-none"
+              />
+              <button
+                type="submit"
+                disabled={mutation.isPending}
+                className="mt-3 bg-sky-600 text-white px-5 py-2 rounded-lg hover:bg-sky-700 transition"
+              >
+                {mutation.isPending ? "Posting..." : "Post Comment"}
+              </button>
+            </form>
+          ) : (
+            <div className="mt-6 text-center">
+              <p className="mb-2 text-gray-600">
+                You must be logged in to post a comment.
+              </p>
+              <a
+                href="/login"
+                className="inline-block bg-sky-600 text-white px-5 py-2 rounded-lg hover:bg-sky-700 transition"
+              >
+                Login to Comment
+              </a>
+            </div>
+          )}
         </div>
       </div>
     </div>

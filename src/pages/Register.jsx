@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/userAuthStore";
 
@@ -26,6 +26,13 @@ const Register = () => {
       console.log(error);
     }
   };
+
+  const clearError = useAuthStore((state) => state.clearError);
+
+  useEffect(() => {
+    clearError();
+  }, [clearError]);
+
   return (
     <div className="flex w-full items-center justify-center h-[100vh]">
       <form

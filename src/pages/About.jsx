@@ -111,22 +111,27 @@ const About = () => {
         >
           Meet Our Team
         </motion.h2>
-        <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-10">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-10">
           {[
             {
-              name: "Alex Carter",
-              role: "Founder & CEO",
-              img: "https://images.unsplash.com/photo-1607746882042-944635dfe10e?auto=format&fit=crop&w=500&q=80",
+              name: "Akshit Mittal",
+              role: "Team Leader",
+              img: "Akshit.PNG",
             },
             {
-              name: "Sofia Patel",
-              role: "Lead Developer",
-              img: "https://images.unsplash.com/photo-1527980965255-d3b416303d12?auto=format&fit=crop&w=500&q=80",
+              name: "Abhishek Bhatia",
+              role: "Frontend Developer",
+              img: "Abhishek.jpg",
             },
             {
-              name: "Michael Johnson",
-              role: "Community Manager",
-              img: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=500&q=80",
+              name: "Amjad Mishal",
+              role: "Backend Developer",
+              img: "Me4.jpg",
+            },
+            {
+              name: "Aditya",
+              role: "Team Member",
+              img: "Aditya.jpg",
             },
           ].map((member, idx) => (
             <motion.div

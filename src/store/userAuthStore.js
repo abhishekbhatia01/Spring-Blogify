@@ -45,9 +45,12 @@ export const useAuthStore = create((set) => ({
       set({ user: res.data, isAuthenticated: true });
       console.log(res.data);
     } catch (err) {
-      set({
-        error: err.response?.data?.message || err.message || "Login Failed",
-      });
+      console.log(err);
+      if (err.response.status === 401) {
+        set({
+          error: "Invalid Credentials!",
+        });
+      }
       throw err;
     } finally {
       set({ loading: false });
@@ -60,5 +63,19 @@ export const useAuthStore = create((set) => ({
     localStorage.removeItem("user");
     localStorage.removeItem("isAuthenticated");
     set({ user: null, isAuthenticated: false });
+  },
+
+  // Update user details
+  updateUser: (newUserDetails) => {
+    set((state) => {
+      const updatedUser = { ...state.user, ...newUserDetails };
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+      return { user: updatedUser };
+    });
+  },
+
+  // Clear error
+  clearError: () => {
+    set({ error: null });
   },
 }));

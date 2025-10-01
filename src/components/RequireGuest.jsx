@@ -6,7 +6,6 @@ const RequireGuest = ({ children }) => {
   const location = useLocation();
 
   if (isAuthenticated) {
-    // Redirect logged-in users to home or dashboard
     return <Navigate to="/" state={{ from: location }} replace />;
   }
 

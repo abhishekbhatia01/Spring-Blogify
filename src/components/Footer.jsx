@@ -12,7 +12,7 @@ const Footer = () => {
             `}</style>
 
       <footer className="flex flex-col items-center justify-around w-full py-16 text-sm bg-slate-50 text-gray-800/70">
-        <svg
+        {/* <svg
           width="157"
           height="40"
           viewBox="0 0 157 40"
@@ -30,9 +30,10 @@ const Footer = () => {
             strokeLinecap="round"
             strokeLinejoin="round"
           />
-        </svg>
+        </svg> */}
+        <h1 className="text-3xl font-semibold logo">Blogify</h1>
         <p className="mt-4 text-center">
-          Copyright © 2025 <a href="https://prebuiltui.com">PrebuiltUI</a>. All
+          Copyright © 2025 <a href="https://prebuiltui.com">Blogify</a>. All
           rights reservered.
         </p>
         <div className="flex items-center gap-4 mt-6">
